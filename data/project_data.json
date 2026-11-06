@@ -1,0 +1,22 @@
+{
+    "users": [],
+    "projects": [
+        {
+            "project_id": 1,
+            "title": "Build Python CLI App",
+            "owner_id": 1,
+            "tasks": [
+                {
+                    "task_id": 1,
+                    "description": "Configure argparse routing switches",
+                    "status": "Pending"
+                },
+                {
+                    "task_id": 2,
+                    "description": "Integrate rich format panel views",
+                    "status": "Pending"
+                }
+            ]
+        }
+    ]
+}
