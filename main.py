@@ -1,6 +1,6 @@
 import argparse
 from services import storage_service
-from services.ai_client import generate_project_summary
+from services.ai_client import AIClient
 from utils import formatters
 from models.project import Project
 from models.task import Task
@@ -75,7 +75,8 @@ def main():
         project_obj.tasks = [Task(t["task_id"], t["description"], t["status"]) for t in project_dict.get("tasks", [])]
 
         print("Talking to local AI model...")
-        summary = generate_project_summary(project_obj)
+        ai_client = AIClient()
+        summary = ai_client.generate_project_summary(project_obj)
         formatters.print_ai_summary(project_obj.title, summary)
 
     else:
