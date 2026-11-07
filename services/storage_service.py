@@ -10,7 +10,7 @@ def load_all_data():
     with open(DATA_FILE, "r") as file:
         try:
             return json.load(file)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, TypeError):
             return {"users": [], "projects": []}
 
 def save_all_data(db_snapshot):

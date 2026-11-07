@@ -35,31 +35,31 @@ def print_projects_table(projects_list):
             p['due_date']
         )
         
-    console.print(project_table)
+        console.print(project_table)
 
-    tasks = p.get("tasks", [])
-    if tasks:
-        # Shift the task sub-table slightly to the right using padding spaces for clean visual hierarchy
-        task_table = Table(title="  ↳ Project Tasks", title_style="dim italic text", border_style="dim")
-        task_table.add_column("  Task ID", style="yellow", justify="center")
-        task_table.add_column("Description", style="white")
-        task_table.add_column("Status", style="green")
+        tasks = p.get("tasks", [])
+        if tasks:
+            # Shift the task sub-table slightly to the right using padding spaces for clean visual hierarchy
+            task_table = Table(title="  ↳ Project Tasks", title_style="dim italic text", border_style="dim")
+            task_table.add_column("  Task ID", style="yellow", justify="center")
+            task_table.add_column("Description", style="white")
+            task_table.add_column("Status", style="green")
 
-        for t in tasks:
-            # Add status coloring dynamically based on keyword flags
-            status_str = t['status']
-            if status_str == "Complete":
-                status_display = f"[bold green]{status_str}[/bold green]"
-            elif status_str == "In Progress":
-                status_display = f"[bold yellow]{status_str}[/bold yellow]"
-            else:
-                status_display = f"[bold dim]{status_str}[/bold dim]"
+            for t in tasks:
+                # Add status coloring dynamically based on keyword flags
+                status_str = t['status']
+                if status_str == "Complete":
+                    status_display = f"[bold green]{status_str}[/bold green]"
+                elif status_str == "In Progress":
+                    status_display = f"[bold yellow]{status_str}[/bold yellow]"
+                else:
+                    status_display = f"[bold dim]{status_str}[/bold dim]"
 
-            task_table.add_row(f"  {t['task_id']}", t['description'], status_display)
+                task_table.add_row(f"  {t['task_id']}", t['description'], status_display)
             
-        console.print(task_table)
-    else:
-        console.print("  [dim italic]↳ No tasks added to this project yet.[/dim italic]")
+            console.print(task_table)
+        else:
+            console.print("  [dim italic]↳ No tasks added to this project yet.[/dim italic]")
         
         # Print a subtle dividing line break space between distinct project segments
-    console.print("\n" + "─" * 60 + "\n")
+        console.print("\n" + "─" * 60 + "\n")
