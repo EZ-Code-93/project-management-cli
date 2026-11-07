@@ -1,3 +1,4 @@
+# Task model representing an individual task within a project
 class Task:
     def __init__(self, task_id, description, status="Pending"):
         self._task_id = task_id
@@ -18,7 +19,6 @@ class Task:
 
     @status.setter
     def status(self, value):
-        # Good place to enforce string statuses like 'Pending', 'In Progress', 'Complete'
         self._status = value
 
     def to_dict(self):

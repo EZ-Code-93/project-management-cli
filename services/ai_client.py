@@ -1,5 +1,5 @@
 import ollama
-
+# AIClient class for interacting with the Ollama API to generate project summaries
 class AIClient:
     def __init__(self, model='llama3.2'):
         self.model = model

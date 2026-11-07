@@ -5,8 +5,9 @@ from utils import formatters
 from models.user import User
 from models.project import Project
 from models.task import Task
-
+#  ENTRY POINT FOR THE CLI APPLICATION
 def main():
+    #  Initialize the argument parser and define subcommands
     parser = argparse.ArgumentParser(description="Project Management CLI Application")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -38,9 +39,9 @@ def main():
     if args.command is None:
         parser.print_help()
         return
-
+    #  Load the current state of the database into memory
     db = storage_service.load_all_data()
-
+    #  Handle the 'create-user' command
     if args.command == "create-user":
         if not args.name.strip():
             print("Error: User name cannot be empty.")
@@ -53,7 +54,7 @@ def main():
         db["users"].append(new_user.to_dict())
         storage_service.save_all_data(db)
         formatters.print_success(f"User '{args.name}' created successfully!")
-
+    #  Handle the 'create-project' command
     elif args.command == "create-project":
         if not args.title.strip():
             print("Error: Project title cannot be empty.")
@@ -68,7 +69,7 @@ def main():
 
         new_project = Project(title=args.title, description=args.desc, due_date=args.due)
         
-        # Triggers your custom .setter wrappers!
+        # Triggers custom .setter wrappers!
         new_project.project_id = len(db["projects"]) + 1
         new_project.owner_name = user_dict["name"]
 
@@ -76,6 +77,7 @@ def main():
         storage_service.save_all_data(db)
         formatters.print_success(f"Project '{new_project.title}' assigned to {new_project.owner_name}!")
 
+    #  Handle the 'add-task' and 'analyze' commands
     elif args.command == "add-task" or args.command == "analyze":
         project_dict = next((p for p in db["projects"] if p["project_id"] == args.project_id), None)
         if not project_dict:
@@ -121,7 +123,7 @@ def main():
             ai_client = AIClient()
             summary = ai_client.generate_project_summary(project_obj)
             formatters.print_ai_summary(project_obj.title, summary)
-
+    #  Handle the 'update-task' command
     elif args.command == "update-task":
         project_dict = next((p for p in db["projects"] if p["project_id"] == args.project_id), None)
         if not project_dict:
@@ -142,45 +144,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-'''
-elif args.command == "update-task":
-        # 1. Locate the target project dictionary from the global master list
-        project_dict = next((p for p in db["projects"] if p["project_id"] == args.project_id), None)
-        if not project_dict:
-            print(f"Error: Project with ID {args.project_id} not found.")
-            return
-
-        # 2. Reconstruct the Project object context
-        project_obj = Project(
-            title=project_dict["title"],
-            description=project_dict.get("description", ""),
-            due_date=project_dict.get("due_date", "")
-        )
-        project_obj.project_id = project_dict["project_id"]
-        project_obj.owner_name = project_dict.get("owner_name")
-        project_obj.created_at = project_dict.get("created_at")
-        
-        # Hydrate existing tasks back into native Task objects
-        project_obj.tasks = [
-            Task(t["task_id"], t["description"], t["status"]) 
-            for t in project_dict.get("tasks", [])
-        ]
-
-        # 3. Locate the specific task object instance by target ID
-        task_obj = next((t for t in project_obj.tasks if t.task_id == args.task_id), None)
-        if not task_obj:
-            print(f"Error: Task with ID {args.task_id} not found in Project {args.project_id}.")
-            return
-
-        # 4. Update the task status natively using your protected property setter!
-        task_obj.status = args.status
-
-        # 5. Serialize the modified task list array back to our master dictionary reference
-        project_dict["tasks"] = [t.to_dict() for t in project_obj.tasks]
-        
-        # 6. Commit the changes back to your project_data.json database
-        storage_service.save_all_data(db)
-        formatters.print_success(f"Task {args.task_id} status updated to '[bold cyan]{args.status}[/bold cyan]'!")
-'''

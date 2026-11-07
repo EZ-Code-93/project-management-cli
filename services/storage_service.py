@@ -1,9 +1,10 @@
 import json
 import os
-
+# Storage service for loading and saving project management data to a JSON file
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_FILE = os.path.join(BASE_DIR, "data", "project_data.json")
-
+# Path to the JSON data file containing users and projects
+# Load all data from the JSON file, returning a dictionary with users and projects
 def load_all_data():
     if not os.path.exists(DATA_FILE):
         return {"users": [], "projects": []}
@@ -13,6 +14,7 @@ def load_all_data():
         except (json.JSONDecodeError, TypeError):
             return {"users": [], "projects": []}
 
+# Save the provided database snapshot to the JSON file
 def save_all_data(db_snapshot):
     # Ensure data folder exists
     os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)

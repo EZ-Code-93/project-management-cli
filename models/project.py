@@ -1,6 +1,7 @@
 from datetime import datetime
 from models.task import Task
 
+# Project model representing a project with tasks, owner, and metadata
 class Project:
     def __init__(self, title, description, due_date):
         self._title = title

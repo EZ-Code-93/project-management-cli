@@ -39,7 +39,7 @@ def print_projects_table(projects_list):
 
         tasks = p.get("tasks", [])
         if tasks:
-            # Shift the task sub-table slightly to the right using padding spaces for clean visual hierarchy
+            # Only render the task table if there are tasks associated with the project
             task_table = Table(title="  ↳ Project Tasks", title_style="dim italic text", border_style="dim")
             task_table.add_column("  Task ID", style="yellow", justify="center")
             task_table.add_column("Description", style="white")
