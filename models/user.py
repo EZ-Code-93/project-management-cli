@@ -1,5 +1,5 @@
 from services import storage_service
-
+# User model representing an individual user and their associated projects
 class User:
     def __init__(self, name):
         self._name = name
