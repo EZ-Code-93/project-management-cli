@@ -10,11 +10,11 @@ def main():
     parser = argparse.ArgumentParser(description="Project Management CLI Application")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # Command: create-user --name <str>
+    subparsers.add_parser("list", help="List all projects")
+
     user_parser = subparsers.add_parser("create-user", help="Create a new user")
     user_parser.add_argument("--name", required=True, help="Name of the user")
 
-    # Command: create-project --title <str> --desc <str> --due <str> --user <str>
     create_parser = subparsers.add_parser("create-project", help="Create a new project")
     create_parser.add_argument("--title", required=True, help="Title of the project")
     create_parser.add_argument("--desc", required=True, help="Description")
@@ -25,18 +25,22 @@ def main():
     task_parser.add_argument("--project-id", required=True, type=int, help="Project ID target")
     task_parser.add_argument("--desc", required=True, help="Task description")
 
-    # Command: list
-    subparsers.add_parser("list", help="List all projects")
+    update_task_parser = subparsers.add_parser("update-task", help="Update the status of a specific task")
+    update_task_parser.add_argument("--project-id", required=True, type=int, help="Project ID target")
+    update_task_parser.add_argument("--task-id", required=True, type=int, help="Task ID target")
+    update_task_parser.add_argument("--status", required=True, choices=["Pending", "In Progress", "Complete"], help="New status for the task")
 
-    # Command: analyze --project-id <id>
     ai_parser = subparsers.add_parser("analyze", help="Get an AI status analysis of a project")
     ai_parser.add_argument("--project-id", required=True, type=int, help="Project ID to analyze")
 
     args = parser.parse_args()
+    if args.command is None:
+        parser.print_help()
+        return
+
     db = storage_service.load_all_data()
 
     if args.command == "create-user":
-        # Check if user already exists
         if any(u["name"].lower() == args.name.lower() for u in db["users"]):
             print(f"Error: User '{args.name}' already exists.")
             return
@@ -47,73 +51,84 @@ def main():
         formatters.print_success(f"User '{args.name}' created successfully!")
 
     elif args.command == "create-project":
-        # 1. Enforce that the user must exist first
         user_dict = next((u for u in db["users"] if u["name"].lower() == args.user.lower()), None)
         if not user_dict:
-            print(f"Error: User '{args.user}' does not exist. Please create the user first using 'create-user'.")
+            print(f"Error: User '{args.user}' does not exist.")
             return
 
-        # 2. Instantiate the clean project
         new_project = Project(title=args.title, description=args.desc, due_date=args.due)
         
-        # 3. Assign structural fields dynamically
+        # Triggers your custom .setter wrappers!
         new_project.project_id = len(db["projects"]) + 1
-        new_project.owner_name = user_dict["name"] # Assigned via their exact tracked name!
+        new_project.owner_name = user_dict["name"]
 
-        # 4. Save to global projects list and update the user's personal project tracking array
         db["projects"].append(new_project.to_dict())
-        
         storage_service.save_all_data(db)
-        formatters.print_success(f"Project '{args.title}' created and assigned to {new_project.owner_name}!")
+        formatters.print_success(f"Project '{new_project.title}' assigned to {new_project.owner_name}!")
 
-    elif args.command == "add-task":
-        # 1. Locate the targeted project dictionary from the global master list
+    elif args.command == "add-task" or args.command == "analyze":
         project_dict = next((p for p in db["projects"] if p["project_id"] == args.project_id), None)
         if not project_dict:
             print(f"Error: Project with ID {args.project_id} not found.")
             return
 
-        # 2. Reconstruct the Project object from saved database values
         project_obj = Project(
             title=project_dict["title"],
             description=project_dict.get("description", ""),
             due_date=project_dict.get("due_date", "")
         )
-        # Re-apply tracking variables that aren't inside __init__
+        # Sets historical parameters through setters smoothly
         project_obj.project_id = project_dict["project_id"]
         project_obj.owner_name = project_dict.get("owner_name")
         project_obj.created_at = project_dict.get("created_at")
-        
-        # Hydrate existing tasks back into clean Task instances
-        project_obj.tasks = [
-            Task(t["task_id"], t["description"], t["status"]) 
-            for t in project_dict.get("tasks", [])
-        ]
+        project_obj.tasks = [Task(t["task_id"], t["description"], t["status"]) for t in project_dict.get("tasks", [])]
 
-        # 3. Instantiate and append the new task instance natively
-        new_task_id = len(project_obj.tasks) + 1
-        new_task = Task(task_id=new_task_id, description=args.desc)
-        project_obj.tasks.append(new_task)
+        if args.command == "add-task":
+            new_task_id = len(project_obj.tasks) + 1
+            new_task = Task(task_id=new_task_id, description=args.desc)
+            project_obj.tasks.append(new_task)
 
-        # 4. Serialize the updated task list back to our master dictionary reference
-        project_dict["tasks"] = [t.to_dict() for t in project_obj.tasks]
-        
-        # 5. Commit structural modifications straight back to the JSON file
+            project_dict["tasks"] = [t.to_dict() for t in project_obj.tasks]
+            storage_service.save_all_data(db)
+            formatters.print_success(f"Added task to Project ID {args.project_id}!")
+
+        elif args.command == "analyze":
+            print("Talking to local AI model...")
+            ai_client = AIClient()
+            summary = ai_client.generate_project_summary(project_obj)
+            formatters.print_ai_summary(project_obj.title, summary)
+
+    elif args.command == "update-task":
+        project_dict = next((p for p in db["projects"] if p["project_id"] == args.project_id), None)
+        if not project_dict:
+            print(f"Error: Project with ID {args.project_id} not found.")
+            return
+
+        task_dict = next((t for t in project_dict.get("tasks", []) if t["task_id"] == args.task_id), None)
+        if not task_dict:
+            print(f"Error: Task with ID {args.task_id} not found in Project ID {args.project_id}.")
+            return
+
+        task_dict["status"] = args.status
         storage_service.save_all_data(db)
-        formatters.print_success(f"Added task '{args.desc}' to Project ID {args.project_id} successfully!")
-
+        formatters.print_success(f"Updated status of Task ID {args.task_id} in Project ID {args.project_id} to '{args.status}'!")
 
     elif args.command == "list":
         formatters.print_projects_table(db["projects"])
 
-    elif args.command == "analyze":
+if __name__ == "__main__":
+    main()
+
+
+'''
+elif args.command == "update-task":
         # 1. Locate the target project dictionary from the global master list
         project_dict = next((p for p in db["projects"] if p["project_id"] == args.project_id), None)
         if not project_dict:
             print(f"Error: Project with ID {args.project_id} not found.")
             return
 
-        # 2. Reconstruct the clean Project object signature
+        # 2. Reconstruct the Project object context
         project_obj = Project(
             title=project_dict["title"],
             description=project_dict.get("description", ""),
@@ -123,22 +138,25 @@ def main():
         project_obj.owner_name = project_dict.get("owner_name")
         project_obj.created_at = project_dict.get("created_at")
         
-        # Hydrate nested task maps into clean Task instances for the AI prompt context
+        # Hydrate existing tasks back into native Task objects
         project_obj.tasks = [
             Task(t["task_id"], t["description"], t["status"]) 
             for t in project_dict.get("tasks", [])
         ]
 
-        # 3. Fire off the structured prompt data to Ollama
-        print("Talking to local AI model...")
-        ai_client = AIClient()
-        summary = ai_client.generate_project_summary(project_obj)
+        # 3. Locate the specific task object instance by target ID
+        task_obj = next((t for t in project_obj.tasks if t.task_id == args.task_id), None)
+        if not task_obj:
+            print(f"Error: Task with ID {args.task_id} not found in Project {args.project_id}.")
+            return
+
+        # 4. Update the task status natively using your protected property setter!
+        task_obj.status = args.status
+
+        # 5. Serialize the modified task list array back to our master dictionary reference
+        project_dict["tasks"] = [t.to_dict() for t in project_obj.tasks]
         
-        # 4. Display the results utilizing your rich layout panels
-        formatters.print_ai_summary(project_obj.title, summary)
-
-    else:
-        parser.print_help()
-
-if __name__ == "__main__":
-    main()
+        # 6. Commit the changes back to your project_data.json database
+        storage_service.save_all_data(db)
+        formatters.print_success(f"Task {args.task_id} status updated to '[bold cyan]{args.status}[/bold cyan]'!")
+'''
