@@ -24,6 +24,7 @@ def main():
     task_parser = subparsers.add_parser("add-task", help="Add a task to a project")
     task_parser.add_argument("--project-id", required=True, type=int, help="Project ID target")
     task_parser.add_argument("--desc", required=True, help="Task description")
+    task_parser.add_argument("--status", required=False, choices=["Pending", "In Progress", "Complete"], help="Initial status for the task")
 
     update_task_parser = subparsers.add_parser("update-task", help="Update the status of a specific task")
     update_task_parser.add_argument("--project-id", required=True, type=int, help="Project ID target")
@@ -41,6 +42,9 @@ def main():
     db = storage_service.load_all_data()
 
     if args.command == "create-user":
+        if not args.name.strip():
+            print("Error: User name cannot be empty.")
+            return
         if any(u["name"].lower() == args.name.lower() for u in db["users"]):
             print(f"Error: User '{args.name}' already exists.")
             return
@@ -51,6 +55,12 @@ def main():
         formatters.print_success(f"User '{args.name}' created successfully!")
 
     elif args.command == "create-project":
+        if not args.title.strip():
+            print("Error: Project title cannot be empty.")
+            return
+        if not args.desc.strip():
+            print("Error: Project description cannot be empty.")
+            return
         user_dict = next((u for u in db["users"] if u["name"].lower() == args.user.lower()), None)
         if not user_dict:
             print(f"Error: User '{args.user}' does not exist.")
@@ -84,8 +94,19 @@ def main():
         project_obj.tasks = [Task(t["task_id"], t["description"], t["status"]) for t in project_dict.get("tasks", [])]
 
         if args.command == "add-task":
+            if not args.desc.strip():
+                print("Error: Task description cannot be empty.")
+                return
+            if not args.status:
+                args.status = "Pending"
+            if args.status not in ["Pending", "In Progress", "Complete"]:
+                print("Error: Invalid task status.")
+                return
+            if not args.project_id:
+                print("Error: Project ID must be specified.")
+                return
             new_task_id = len(project_obj.tasks) + 1
-            new_task = Task(task_id=new_task_id, description=args.desc)
+            new_task = Task(task_id=new_task_id, description=args.desc, status=args.status or "Pending")
             project_obj.tasks.append(new_task)
 
             project_dict["tasks"] = [t.to_dict() for t in project_obj.tasks]
@@ -93,6 +114,9 @@ def main():
             formatters.print_success(f"Added task to Project ID {args.project_id}!")
 
         elif args.command == "analyze":
+            if not args.project_id:
+                print("Error: Project ID must be specified for analysis.")
+                return
             print("Talking to local AI model...")
             ai_client = AIClient()
             summary = ai_client.generate_project_summary(project_obj)
